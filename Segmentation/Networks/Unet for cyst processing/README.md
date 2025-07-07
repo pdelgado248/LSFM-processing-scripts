@@ -1,0 +1,1 @@
+A 2D Unet network was trained on annotations segmenting cysts in 2D full kidney slices. The trained network's parameters are inside the zipped folder "Cyst_PretrainedModel.zip". Unzipping it allows to use the notebooks in this folder to apply the network.

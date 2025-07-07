@@ -1,0 +1,1 @@
+This notebook allows to extract texture feature from 3D patches and train, using them, an XGBoost classifier for healthy and pathological patches.
