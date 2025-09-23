@@ -1,13 +1,28 @@
 # LSFM-processing
-Scripts for processing Healthy and pathological kidney Light Sheet Fluorescence Microscopy (LSFM) images. Pathological kidneys affected by Autosomal Dominant Polycistic Kidney Disease (ADPKD). 
+Scripts for processing Healthy and pathological kidney Light Sheet Fluorescence Microscopy (LSFM) images. Pathological kidneys were affected by Autosomal Dominant Polycistic Kidney Disease (ADPKD). 
 
-Segmentation folder:
+Each folder within this repository contains a different README.md file to explain its contents and allow users to navigate through it in a clearer way. There are two main folders:
 
-Script to segment and process several regions of the kidney.
+>Segmentation
+
+It contains codes to segment several regions of the kidney, including:
+
+- Full kidney
+- Inner region and cortex
+- Inner cavities
+- Glomeruli
+- Cysts
+
+and obtain several measurements from each of them, producing in the end statistical results and plots.
+
+inside this folder you can find two subfolders. "Data processing", that contains pathways for segmentation of full kidney, inner regions, cortex and inner cavities, together with analyses of all segmentations. The "Networks" folder, on the other hand, features scripts to apply deep learning methods to segment glomeruli and cysts.
 
 
-Texture analysis folder:
 
-Script to extract texture features from 3D patches of the images and, using them, train a classifier of pathological and healthy patches.
+>Texture analysis
 
-Each subfolder includes the corresponding "requirements.txt" file to specify the necessary packages.
+This folder focuses on texture analysis of 3D patches, cropped from the full LSFM images. Several texture features are extracted from each of these patches, and are then used to train a classifier of pathological and healthy samples. After this, an analysis of importance of each of the features considered is conducted.
+
+
+
+Each subfolder in this repository includes as well the corresponding "requirements.txt" file to specify the necessary packages needed to be installed to run the code.
