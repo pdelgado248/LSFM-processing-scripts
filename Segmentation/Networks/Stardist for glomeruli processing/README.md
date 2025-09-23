@@ -3,5 +3,7 @@ A 2D Stardist network was trained on annotations segmenting glomeruli in 2D patc
 There are a series of notebooks in this folder:
 
 1 - Allows to load these weights and apply the network to produce glomeruli segmentations
+
 2 - Binarizes the previously obtained masks, applies a median z-filter to correct skipped frames in the glomeruli segmentation and applies connected components analysis and gives a tif stack and a txt file with glomeruli data as output
+
 3 - Combines the resulting images with masks of the medulla (inner region of the kidney) to mark glomeruli centroids as being inside or outside it
