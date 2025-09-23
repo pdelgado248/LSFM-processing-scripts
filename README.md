@@ -15,7 +15,7 @@ It contains codes to segment several regions of the kidney, including:
 
 and obtain several measurements from each of them, producing in the end statistical results and plots.
 
-inside this folder you can find two subfolders. "Data processing", that contains pathways for segmentation of full kidney, inner regions, cortex and inner cavities, together with analyses of all segmentations. The "Networks" folder, on the other hand, features scripts to apply deep learning methods to segment glomeruli and cysts.
+Inside this folder you can find two subfolders. "Data processing", that contains pathways for segmentation of full kidney, inner regions, cortex and inner cavities, together with analyses of all segmentations. The "Networks" folder, on the other hand, features scripts to apply deep learning methods to segment glomeruli and cysts.
 
 
 
