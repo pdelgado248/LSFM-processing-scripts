@@ -1,11 +1,13 @@
 import tifffile as tif
 import time
 import os
-from skimage.measure import regionprops_table
+from skimage.measure import regionprops_table, marching_cubes
 import pandas as pd
 import scipy.ndimage as ndi
+import numpy as np
+from tqdm import tqdm
 
-def measureConComps(maskPath,resultReportFolder,onlyArea = False,reScaleProp=1,startingSlice=0,dimension='3D',inertiaTensEigen = False, typeOfMask='cysts',saveSlices = False):
+def measureConComps(maskPath,resultReportFolder,onlyArea = False,surfaces = False, reScaleProp=1,startingSlice=0,dimension='3D',inertiaTensEigen = False, typeOfMask='cysts',saveSlices = False):
     '''This function reads an already labeled 3D mask and
     stores the volume and centroid of each component in a txt file.
     if onlyArea is True, only the volume of the components will be stored.
@@ -54,14 +56,79 @@ def measureConComps(maskPath,resultReportFolder,onlyArea = False,reScaleProp=1,s
         resultsTable = regionprops_table(labeled_mask, properties=('label', 'area'), cache=True)
     else:
         #Otherwise, if inertiaTensEigen is True, the inertia tensor eigenvalues will be calculated.
-        if inertiaTensEigen:
+        if inertiaTensEigen and not surfaces:
             resultsTable = regionprops_table(labeled_mask, properties=('label', 'centroid','area','inertia_tensor_eigvals'), cache=True)     
-        
-        #Else, the centroid and volume of the components will be calculated.
+
+        #If surfaces is True, surface area and sphericity will be calculated later using the bounding box.
+        if inertiaTensEigen and surfaces:
+            resultsTable = regionprops_table(labeled_mask, properties=('label', 'centroid','area','inertia_tensor_eigvals','bbox'), cache=True)
+
+        elif surfaces and not inertiaTensEigen:
+            resultsTable = regionprops_table(labeled_mask, properties=('label', 'centroid','area','bbox'), cache=True)
+
         else:
             resultsTable = regionprops_table(labeled_mask, properties=('label', 'centroid','area'), cache=True)
 
     resultsTable = pd.DataFrame(resultsTable)  
+
+    # Add surface area and sphericity calculations, only if requested
+    if surfaces and not onlyArea:
+        # Prepare lists to store new results
+        surface_areas = []
+        sphericities = []
+
+        def compute_surface_area(mask):
+            """Computes surface area of a 3D binary mask using marching cubes."""
+            try:
+                verts, faces, _, _ = marching_cubes(mask, level=0)
+                tri_areas = 0.5 * np.linalg.norm(np.cross(
+                    verts[faces[:, 1]] - verts[faces[:, 0]],
+                    verts[faces[:, 2]] - verts[faces[:, 0]]
+                ), axis=1)
+                return np.sum(tri_areas)
+            except:
+                return np.nan
+
+        # Iterate through each region to calculate surface area and sphericity
+        for i, row in tqdm(resultsTable.iterrows(), total=len(resultsTable), desc="Obtaining surface area and sphericity"):
+
+            # Extract label and volume of that specific component
+            label_id = row['label']
+            volume = row['area']
+
+            # Get bounding box and crop with margin
+            mini, minj, mink = int(row['bbox-0']), int(row['bbox-1']), int(row['bbox-2'])
+            maxi, maxj, maxk = int(row['bbox-3']), int(row['bbox-4']), int(row['bbox-5'])
+
+            margin = 2
+            mini = max(mini - margin, 0)
+            minj = max(minj - margin, 0)
+            mink = max(mink - margin, 0)
+            maxi = min(maxi + margin, labeled_mask.shape[0])
+            maxj = min(maxj + margin, labeled_mask.shape[1])
+            maxk = min(maxk + margin, labeled_mask.shape[2])
+
+            # Crop region and create binary mask
+            cropped = labeled_mask[mini:maxi, minj:maxj, mink:maxk]
+            local_mask = (cropped == label_id)
+
+            # Compute surface area using marching cubes
+            surface_area = compute_surface_area(local_mask)
+
+            # Compute sphericity
+            if not np.isnan(surface_area) and surface_area > 0:
+                sphericity = (np.pi ** (1 / 3)) * ((6 * volume) ** (2 / 3)) / surface_area
+            else:
+                sphericity = np.nan
+
+            # Append results to lists
+            surface_areas.append(surface_area)
+            sphericities.append(sphericity)
+
+
+        # Add to DataFrame
+        resultsTable['surface_area'] = surface_areas
+        resultsTable['sphericity'] = sphericities
 
     #If there has been a rescaling
     if reScaleProp != 1:
@@ -73,11 +140,19 @@ def measureConComps(maskPath,resultReportFolder,onlyArea = False,reScaleProp=1,s
         #Rescale the volumes back to their original size
         resultsTable['area'] = resultsTable['area']/(reScaleProp**3)
 
-        if inertiaTensEigen:
+        if inertiaTensEigen and not onlyArea:
             #Rescale the inertia tensor eigenvalues back to their original size
             resultsTable['inertia_tensor_eigvals-0'] = resultsTable['inertia_tensor_eigvals-0']/(reScaleProp**2)
             resultsTable['inertia_tensor_eigvals-1'] = resultsTable['inertia_tensor_eigvals-1']/(reScaleProp**2)
             resultsTable['inertia_tensor_eigvals-2'] = resultsTable['inertia_tensor_eigvals-2']/(reScaleProp**2)
+
+        if surfaces and not onlyArea:
+            #Rescale the surface areas back to their original size
+            resultsTable['surface_area'] = resultsTable['surface_area']/(reScaleProp**2)
+    
+    # Remove bbox columns if they exist (to simplify the results table)
+    bbox_cols = [col for col in resultsTable.columns if col.startswith('bbox-')]
+    resultsTable.drop(columns=bbox_cols, inplace=True)
 
     resultsTable.to_csv(resultReportPath)
 

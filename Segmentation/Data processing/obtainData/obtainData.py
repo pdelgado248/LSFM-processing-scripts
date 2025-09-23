@@ -8,6 +8,7 @@ import tifffile as tif
 import time 
 from scipy.spatial import KDTree
 from scipy.stats import shapiro
+import pingouin as pg
 
 
 def plotBarsAndPoints(titleTag,ylabelTag,healthyDataVoxels,pathologicalDataVoxels=None,dataset = 'healthy',\
@@ -46,12 +47,6 @@ def plotBarsAndPoints(titleTag,ylabelTag,healthyDataVoxels,pathologicalDataVoxel
     position1 = 0
     position2 = 1.5
 
-    if ttest is True:
-        #Significant figures to round the p-value
-        sig_figs = 2
-
-        #Perform a t-test
-        t_statistic, p_value = ttest_ind(healthyDataVoxels, pathologicalDataVoxels)
     
     #Use voxelSize (in microm) to get proper units in mm or mm^3
     if voxelSize is not None:
@@ -75,10 +70,10 @@ def plotBarsAndPoints(titleTag,ylabelTag,healthyDataVoxels,pathologicalDataVoxel
     # Plotting means +- std
     #For 2 datasets, the figure is bigger   
     if dataset == 'both':
-        plt.figure(figsize=(4,8))
+        plt.figure(figsize=(4,6))
         plt.xlim(-1, 3)
     else:           
-        plt.figure(figsize=(3,8))
+        plt.figure(figsize=(3,6))
         plt.xlim([-2, 2])  # Set x-axis start and finish
 
     if yLims is not None:
@@ -147,7 +142,41 @@ def plotBarsAndPoints(titleTag,ylabelTag,healthyDataVoxels,pathologicalDataVoxel
         if shapiro_pathological_p > 0.05:
             print(f"Data can be considered normally distributed (p = {shapiro_pathological_p} > 0.05).")
         else:
-            print(f"Data is NOT normally distributed (p = {shapiro_pathological_p} ≤ 0.05).")
+            print(f"Data is NOT normally distributed (p = {shapiro_pathological_p} ≤ 0.05).")        
+        
+        
+        if ttest is True:
+            #Significant figures to round the p-value
+            sig_figs = 2
+            n1 = len(healthyDataVoxels)
+            n2 = len(pathologicalDataVoxels)
+            # Z value for 95% CI
+            z = 1.96
+
+            if shapiro_healthy_p > 0.05 and shapiro_pathological_p > 0.05:
+                print("Both datasets are normally distributed. A t-test can be performed.\n")
+                # Perform the t-test with effect size and CI
+                results = pg.ttest(x=healthyDataVoxels, y=pathologicalDataVoxels, correction=False)
+                p_value = results['p-val'][0]
+                cohen_d = results['cohen-d'][0]
+                # Calculating cohen's d confidence interval for the effect size:'
+                # Pooled sample size
+                dof = n1 + n2 - 2
+                # Standard error of Cohen's d
+                se_d = np.sqrt((n1 + n2) / (n1 * n2) + (cohen_d ** 2) / (2 * dof))
+                ci_cohen_lower = cohen_d - z * se_d
+                ci_cohen_upper = cohen_d + z * se_d
+
+            else:
+                print("At least one of the datasets is not normally distributed. A Mann-Witney U test should be performed.\n")
+                #Perform the Mann-Witney U test with effect size and CI
+                results = pg.mwu(x=healthyDataVoxels, y=pathologicalDataVoxels)
+                p_value = results['p-val'][0]
+                rbc= results['RBC'].iloc[0]  # Rank-biserial correlation as effect size
+                se_rbc = np.sqrt((n1 + n2 + 1)/(3 * n1 * n2))  # Standard error of rank-biserial correlation
+                ci_rbc_lower = rbc - z * se_rbc
+                ci_rbc_upper = rbc + z * se_rbc            
+
         #Plotting second set of data
         #plt.bar([0.5], np.mean(pathologicalData), color='darkred', width = barWidth, alpha=alphaValue)
         violin_second_set = plt.violinplot(pathologicalData, positions=[position2], showmeans=True, showextrema=True)
@@ -178,24 +207,42 @@ def plotBarsAndPoints(titleTag,ylabelTag,healthyDataVoxels,pathologicalDataVoxel
 
     #If a t-test is performed, write the p-value in the title and print it
     if ttest is True:
+        
         #Write the p-value in the title
         if p_value < 0.01:
             # Find the nearest power of 10 ceiling for the p-value
             nearest_pow = 10**np.ceil(np.log10(p_value))
-            p_value_str = f"p-value < {np.format_float_scientific(nearest_pow, precision=1)}"
+            p_value_str = f"p-value < {nearest_pow}"
         else:
             # Format normally if p-value is >= 0.01
-            p_value_str = f"p-value = {np.format_float_scientific(p_value, precision=sig_figs)}"
+            p_value_str = f"p-value = {p_value:.3g}"
 
-        plt.title(f'{titleTag}\n(t-test {p_value_str})\n', fontsize=16)
-        print(f'\nt-test p-value: {np.format_float_scientific(p_value, precision=sig_figs)}')
-        if p_value < 0.05:
-            print("The difference between the means is statistically significant.")
+        #Specify the type of test that was performed
+        if shapiro_healthy_p > 0.05 and shapiro_pathological_p > 0.05:
+            testName = 't-test'
+            parameterName = 'means'
         else:
-            print("The difference between the means is NOT statistically significant.")
+            testName = ' U-test'
+            parameterName = 'medians'
+
+        plt.title(f'{titleTag}\n({testName} {p_value_str})\n', fontsize=16)
+        print(f'\n{testName} p-value: {np.format_float_scientific(p_value, precision=sig_figs)}')
+
+        if p_value < 0.05:
+
+            print(f"The difference between the {parameterName} is statistically significant.")
+
+        else:
+            print(f"The difference between the {parameterName} is NOT statistically significant.")
+
+        if testName == 't-test':
+            print(f"Cohen's d: {cohen_d:.4f}")
+            print(f"95% CI for Cohen's d: [{ci_cohen_lower:.4f},{ci_cohen_upper:.4f}]")
+        elif testName == ' U-test':
+            print(f"Rank-biserial correlation: {rbc:.4f}")
+            print(f"95% CI for rank-biserial correlation: [{ci_rbc_lower:.4f},{ci_rbc_upper:.4f}]")
     else:
         plt.title(f'{titleTag}\n',fontsize=16)
-    
     
 
     #Label the y axis and set the ticks' size
@@ -400,7 +447,7 @@ def measuresFromConCompsTxt(mainPath,typeAnalysis = 'meanNearestNeighbors',typeD
     It reads the txt files containing the connected components parameters and calculates 
     different measures.
 
-    mainPathCentroids: str
+    mainPath: str
         Path to the main folder where the centroid coordinates, volumes and other parameters of the
         connected components are stored in txt files
     typeAnalysis: str  
@@ -493,6 +540,16 @@ def measuresFromConCompsTxt(mainPath,typeAnalysis = 'meanNearestNeighbors',typeD
                 resultMean = np.mean(areas)
                 resultStd = np.std(areas)
 
+            elif typeAnalysis == 'meanSurfaceArea':
+                surfaceAreas = data['surface_area'].values
+                resultMean = np.mean(surfaceAreas)
+                resultStd = np.std(surfaceAreas)
+            
+            elif typeAnalysis == 'meanSphericity':
+                sphericities = data['sphericity'].values
+                resultMean = np.mean(sphericities)
+                resultStd = np.std(sphericities)
+
             elif typeAnalysis == 'showDistributions': 
                 areas = data['area'].values
 
@@ -513,7 +570,7 @@ def measuresFromConCompsTxt(mainPath,typeAnalysis = 'meanNearestNeighbors',typeD
                     countPathologicalHisto += 1
                     countKidneyHisto =  countPathologicalHisto
 
-                #Rescale areas to mm^2
+                #Rescale volumes to mm^3
                 if voxelSize is not None:
                     areas = (voxelSize**3/1000**3)*areas
 
