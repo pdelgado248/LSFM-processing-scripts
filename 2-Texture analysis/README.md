@@ -1,4 +1,4 @@
-The notebook featured in this folder allows to read a series of 3D patches. These are normalized and the following texture features are extracted:
+The notebook featured in this folder (1-getTextureFeatures.ipynb) allows to read a series of 3D patches. These are normalized and the following texture features are extracted:
 
 - LBP Uniformity
 - Porosity 

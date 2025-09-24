@@ -3,7 +3,7 @@ Scripts for processing Healthy and pathological kidney Light Sheet Fluorescence 
 
 Each folder within this repository contains a different README.md file to explain its contents and allow users to navigate through it in a clearer way. There are two main folders:
 
->Segmentation
+>1-Segmentation
 
 It contains codes to segment several regions of the kidney, including:
 
@@ -15,11 +15,10 @@ It contains codes to segment several regions of the kidney, including:
 
 and obtain several measurements from each of them, producing in the end statistical results and plots.
 
-Inside this folder you can find two subfolders. "Data processing", that contains pathways for segmentation of full kidney, inner regions, cortex and inner cavities, together with analyses of all segmentations. The "Networks" folder, on the other hand, features scripts to apply deep learning methods to segment glomeruli and cysts.
+Inside this folder you can find two subfolders. The "1-Networks" folder features scripts to apply deep learning methods to segment glomeruli and cysts. The "2-Data processing"folder, on the other hand, contains pathways for segmentation of full kidney, inner regions, cortex and inner cavities, together with analyses of all segmentations. 
 
 
-
->Texture analysis
+>2-Texture analysis
 
 This folder focuses on texture analysis of 3D patches, cropped from the full LSFM images. Several texture features are extracted from each of these patches, and are then used to train a classifier of pathological and healthy samples. After this, an analysis of importance of each of the features considered is conducted.
 
