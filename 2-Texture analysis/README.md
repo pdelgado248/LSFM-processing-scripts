@@ -14,3 +14,5 @@ The notebook featured in this folder (1-getTextureFeatures.ipynb) allows to read
 - Fourier Dominant Frequency Magnitude
 
 The feature vectors are then used to train an XGBoost classifier for healthy and pathological patches. Feature importance scores are obtained to rank these features per relevance for characterizing ADPKD.
+
+The second part of the notebook, "Use the stored features to train a classifier and extract importances" can be run on the tabular data contained in this repository.
