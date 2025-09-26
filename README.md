@@ -18,5 +18,6 @@ These segmentations allow the extraction of multiple measurements, ultimately ge
 Contains scripts for texture analysis of 3D patches cropped from full LSFM images. Extracted texture features are used to:
 
 1 - Train a classifier to distinguish between healthy and pathological samples.
+
 2 - Assess the relative importance of individual features.”
 
